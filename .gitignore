@@ -1,0 +1,7 @@
+# Ignore local environment variables and secrets
+.env
+__pycache__/
+*.pyc
+models/*.pkl
+history.db
+.DS_Store
