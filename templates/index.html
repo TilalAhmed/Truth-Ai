@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="TruthScan AI - Fake News Detector powered by LLaMA 3.3 and Machine Learning"/>
+  <meta name="theme-color" content="#388bfd"/>
+  <title>TruthScan AI — Fake News Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-deep: #020b18;
+      --glass-bg: rgba(6, 30, 65, 0.55);
+      --glass-border: rgba(56, 139, 253, 0.18);
+      --glass-blur: blur(18px);
+      --accent: #388bfd;
+      --accent-glow: rgba(56, 139, 253, 0.35);
+      --accent-soft: rgba(56, 139, 253, 0.12);
+      --real-color: #3ddc84;
+      --real-bg: rgba(61, 220, 132, 0.08);
+      --real-border: rgba(61, 220, 132, 0.25);
+      --fake-color: #ff6b6b;
+      --fake-bg: rgba(255, 107, 107, 0.08);
+      --fake-border: rgba(255, 107, 107, 0.25);
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #484f58;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-deep); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
+
+    /* Orbs */
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: drift 18s ease-in-out infinite; }
+    .orb-1 { width: 520px; height: 520px; background: #1a4f9e; top: -120px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 380px; height: 380px; background: #0d3d8a; bottom: -80px; right: -80px; animation-delay: -7s; }
+    .orb-3 { width: 260px; height: 260px; background: #2563eb; top: 40%; left: 55%; animation-delay: -13s; }
+    @keyframes drift { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-40px) scale(1.05)} 66%{transform:translate(-20px,30px) scale(0.96)} }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Layout */
+    .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 40px; }
+    .logo-badge { display: inline-flex; align-items: center; gap: 10px; background: var(--accent-soft); border: 1px solid var(--glass-border); border-radius: 99px; padding: 6px 16px 6px 10px; font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 20px; }
+    .logo-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s ease-in-out infinite; }
+    h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(32px, 5vw, 52px); font-weight: 700; line-height: 1.1; letter-spacing: -1px; background: linear-gradient(135deg, #e6edf3 30%, #388bfd 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; }
+    .subtitle { font-size: 15px; color: var(--text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+    /* Glass Card */
+    .glass { background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: var(--glass-blur); border-radius: 18px; }
+
+    /* Stats Row */
+    .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
+    .stat-card { padding: 18px 14px; text-align: center; transition: transform 0.25s ease, border-color 0.25s ease; cursor: default; }
+    .stat-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1; }
+    .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+    /* Section Label */
+    .section-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+
+    /* Analyzer */
+    .analyzer-card { padding: 28px; margin-bottom: 24px; }
+    textarea { width: 100%; min-height: 150px; resize: vertical; background: rgba(2,11,24,0.6); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-primary); line-height: 1.6; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    textarea::placeholder { color: var(--text-muted); }
+    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .controls-row { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    select { flex: 1; min-width: 180px; background: rgba(2,11,24,0.6); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px 14px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-primary); outline: none; cursor: pointer; transition: border-color 0.2s; }
+    select:focus { border-color: var(--accent); }
+    .btn-analyze { flex: 2; min-width: 180px; background: linear-gradient(135deg, #1a56db, #388bfd); border: none; border-radius: 10px; padding: 13px 24px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; letter-spacing: 0.3px; transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 20px rgba(56,139,253,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-analyze:hover:not(:disabled) { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(56,139,253,0.45); }
+    .btn-analyze:active:not(:disabled) { transform: translateY(0); }
+    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+
+    /* Error */
+    .error-msg { background: var(--fake-bg); border: 1px solid var(--fake-border); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--fake-color); display: none; margin-top: 12px; line-height: 1.5; }
+    .error-msg.visible { display: block; animation: slideUp 0.3s ease; }
+
+    /* Loading */
+    .loading-overlay { text-align: center; padding: 40px 20px; display: none; }
+    .loading-overlay.visible { display: block; }
+    .loading-spinner-big { width: 44px; height: 44px; border: 3px solid rgba(56,139,253,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    .loading-text { font-size: 14px; color: var(--text-secondary); }
+    .loading-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Result Card */
+    .result-card { padding: 28px; display: none; animation: slideUp 0.4s ease; margin-bottom: 24px; }
+    .result-card.visible { display: block; }
+    .verdict-banner { display: flex; align-items: center; gap: 16px; padding: 20px 24px; border-radius: 14px; margin-bottom: 20px; }
+    .verdict-banner.real { background: var(--real-bg); border: 1px solid var(--real-border); }
+    .verdict-banner.fake { background: var(--fake-bg); border: 1px solid var(--fake-border); }
+    .verdict-icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .real .verdict-icon { background: rgba(61,220,132,0.15); }
+    .fake .verdict-icon { background: rgba(255,107,107,0.15); }
+    .verdict-label { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; }
+    .real .verdict-label { color: var(--real-color); }
+    .fake .verdict-label { color: var(--fake-color); }
+    .verdict-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .confidence-wrap { text-align: right; flex-shrink: 0; }
+    .confidence-num { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; }
+    .real .confidence-num { color: var(--real-color); }
+    .fake .confidence-num { color: var(--fake-color); }
+    .confidence-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .conf-bar-wrap { margin-bottom: 20px; }
+    .conf-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    .conf-bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+    .conf-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .real .conf-bar-fill { background: linear-gradient(90deg, #1a7a4a, var(--real-color)); }
+    .fake .conf-bar-fill { background: linear-gradient(90deg, #8b2020, var(--fake-color)); }
+
+    /* Article Credibility Breakdown bar */
+    .cred-bar-wrap { width: 100%; }
+    .cred-bar-track { position: relative; display: flex; width: 100%; height: 22px; border-radius: 99px; overflow: hidden; background: rgba(2,11,24,0.6); border: 1px solid var(--glass-border); backdrop-filter: blur(8px); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+    .cred-bar-segment { height: 100%; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); position: relative; }
+    .cred-bar-segment::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 50%); }
+    .cred-bar-truth { background: linear-gradient(90deg, #1a56db, #5b9bff); box-shadow: 0 0 14px rgba(91,155,255,0.35); }
+    .cred-bar-fake { background: linear-gradient(90deg, #0b2454, #173a7a); }
+    .cred-bar-legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .cred-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+    .cred-legend-item strong { color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; font-size: 12px; }
+    .cred-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .cred-dot-truth { background: linear-gradient(135deg, #5b9bff, #1a56db); box-shadow: 0 0 6px rgba(91,155,255,0.5); }
+    .cred-dot-fake { background: linear-gradient(135deg, #173a7a, #0b2454); }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .result-block { background: rgba(2,11,24,0.45); border: 1px solid rgba(56,139,253,0.1); border-radius: 12px; padding: 16px; }
+    .result-block-title { font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .result-block p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+    .result-block ul { list-style: none; }
+    .result-block ul li { font-size: 13px; color: var(--text-secondary); padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+    .result-block ul li:last-child { border-bottom: none; }
+    .result-block ul li::before { content: '›'; color: var(--accent); font-size: 16px; flex-shrink: 0; }
+    .result-full { background: rgba(2,11,24,0.45); border: 1px solid rgba(56,139,253,0.1); border-radius: 12px; padding: 16px; }
+    .result-full p { font-size: 13px; color: var(--text-secondary); line-height: 1.75; }
+    .ml-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft); border: 1px solid var(--glass-border); border-radius: 99px; padding: 5px 14px; font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 16px; }
+
+    /* Dashboard Grid */
+    .dashboard-title { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border); }
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .dashboard-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card { padding: 22px; }
+    .chart-wrap { position: relative; }
+
+    /* Model Performance Bars */
+    .perf-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .perf-bar-row:last-child { margin-bottom: 0; }
+    .perf-label { font-size: 11px; color: var(--text-secondary); width: 140px; text-align: right; flex-shrink: 0; }
+    .perf-track { flex: 1; height: 18px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+    .perf-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 10px; font-weight: 600; color: #fff; transition: width 1s ease; }
+
+    /* Confusion Matrix */
+    .cm-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; }
+    .cm-header { font-size: 10px; color: var(--text-muted); text-align: center; padding: 4px; font-weight: 600; }
+    .cm-cell { border-radius: 8px; padding: 14px 8px; text-align: center; font-size: 18px; font-weight: 700; }
+    .cm-tp { background: rgba(61,220,132,0.12); color: #3ddc84; border: 1px solid rgba(61,220,132,0.2); }
+    .cm-fp { background: rgba(255,255,255,0.03); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.06); }
+    .cm-fn { background: rgba(255,255,255,0.03); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.06); }
+    .cm-tn { background: rgba(255,107,107,0.1); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.2); }
+    .cm-side-label { font-size: 9px; color: var(--text-muted); text-align: center; display: flex; align-items: center; justify-content: center; }
+
+    /* Word Cloud */
+    .wordcloud { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; padding: 10px 0; }
+    .wc-word { border-radius: 6px; padding: 3px 10px; font-weight: 600; cursor: default; transition: transform 0.2s; }
+    .wc-word:hover { transform: scale(1.1); }
+
+    /* Pipeline */
+    .pipeline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 8px 0; }
+    .pipe-step { background: rgba(2,11,24,0.6); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px 10px; text-align: center; flex: 1; min-width: 90px; transition: transform 0.25s, border-color 0.25s; cursor: default; }
+    .pipe-step:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .pipe-icon { font-size: 20px; margin-bottom: 6px; }
+    .pipe-name { font-size: 10px; font-weight: 600; color: var(--text-primary); }
+    .pipe-desc { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+    .pipe-arrow { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
+
+    /* History Table */
+    .history-table { width: 100%; min-width: 520px; border-collapse: collapse; }
+    .history-table th { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 12px 10px 0; border-bottom: 1px solid var(--glass-border); font-weight: 500; text-align: left; }
+    .history-table td { font-size: 12px; color: var(--text-secondary); padding: 10px 12px 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .history-table tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; border-radius: 99px; padding: 3px 10px; font-size: 10px; font-weight: 600; }
+    .badge-real { background: var(--real-bg); color: var(--real-color); border: 1px solid var(--real-border); }
+    .badge-fake { background: var(--fake-bg); color: var(--fake-color); border: 1px solid var(--fake-border); }
+
+    /* Subject bars */
+    .subject-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .subject-row:last-child { margin-bottom: 0; }
+    .subject-label { font-size: 11px; color: var(--text-secondary); width: 130px; text-align: right; flex-shrink: 0; }
+    .subject-track { flex: 1; height: 12px; background: rgba(255,255,255,0.04); border-radius: 3px; overflow: hidden; }
+    .subject-fill { height: 100%; border-radius: 3px; }
+    .subject-count { font-size: 10px; color: var(--text-muted); width: 40px; text-align: right; }
+
+    footer { text-align: center; margin-top: 60px; font-size: 12px; color: var(--text-muted); }
+    footer span { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .dashboard-grid-2 { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+      textarea, input[type="text"], select { font-size: 16px !important; }
+      .verdict-banner { flex-wrap: wrap; }
+      .confidence-wrap { text-align: left; margin-top: 8px; flex-basis: 100%; }
+    }
+    @media (max-width: 420px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .wrapper { padding: 24px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="wrapper">
+
+  <header>
+    <div class="logo-badge"><span class="dot"></span> Groq LLaMA 3.3 · Live</div>
+    <h1>TruthScan AI</h1>
+    <p class="subtitle">Paste any news article or URL for an instant, explained verdict — powered by LLaMA 3.3 70B</p>
+  </header>
+
+  <div class="stats-row">
+    <div class="glass stat-card"><div class="stat-num">LLaMA 3.3</div><div class="stat-label">AI Engine</div></div>
+    <div class="glass stat-card"><div class="stat-num">70B</div><div class="stat-label">Parameters</div></div>
+    <div class="glass stat-card"><div class="stat-num">URL or Text</div><div class="stat-label">Flexible Input</div></div>
+    <div class="glass stat-card"><div class="stat-num">Any</div><div class="stat-label">Language / Topic</div></div>
+    <div class="glass stat-card"><div class="stat-num">Groq</div><div class="stat-label">Inference Speed</div></div>
+  </div>
+
+  <div class="glass analyzer-card">
+    <div class="section-label">📰 Live News Analyzer</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tabText" onclick="switchTab('text')" style="background:var(--accent);border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">📝 Paste Text</button>
+      <button id="tabUrl" onclick="switchTab('url')" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">🔗 Paste URL</button>
+    </div>
+
+    <div id="textInputDiv">
+      <textarea id="newsInput" placeholder="Paste a news article, headline, or any text here to analyze... (Ctrl+Enter to submit)" role="textbox" aria-label="News article text input"></textarea>
+    </div>
+
+    <div id="urlInputDiv" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1;min-width:200px;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:14px;color:var(--text-primary);outline:none;" aria-label="News article URL input"/>
+        <button onclick="fetchFromUrl()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:10px;padding:14px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap">📥 Fetch Article</button>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="fetchedText" placeholder="Fetched article will appear here automatically..." rows="5" style="width:100%;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:16px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text-secondary);outline:none;resize:vertical" aria-label="Fetched article content"></textarea>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">✅ Works best with: Dawn, Al Jazeera and most regional news sites. BBC/CNN/Reuters often block fetching — paste text manually for those.</div>
+    </div>
+    <div class="controls-row">
+      <select id="modelSelect" aria-label="Select ML model for analysis">
+        {% for model in models %}
+        <option value="{{ model }}">{{ model }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyzeNews()" aria-label="Analyze the news article">
+        <span id="btnText">🔍 Analyze News</span>
+        <div class="spinner" id="btnSpinner"></div>
+      </button>
+    </div>
+    <div class="error-msg" id="errorMsg" role="alert"></div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
+    <div class="loading-spinner-big"></div>
+    <div class="loading-text">Analyzing with AI...</div>
+    <div class="loading-sub">ML model + Groq LLaMA 3.3 working together</div>
+  </div>
+
+  <div class="glass result-card" id="resultCard">
+    <div class="verdict-banner" id="verdictBanner">
+      <div class="verdict-icon" id="verdictIcon"></div>
+      <div style="flex:1">
+        <div class="verdict-label" id="verdictLabel"></div>
+        <div class="verdict-sub" id="verdictSub"></div>
+      </div>
+      <div class="confidence-wrap">
+        <div class="confidence-num" id="confidenceNum"></div>
+        <div class="confidence-label">ML Confidence</div>
+      </div>
+    </div>
+    <div class="conf-bar-wrap" id="confBarWrap">
+      <div class="conf-bar-label"><span>Confidence Score</span><span id="confBarPct"></span></div>
+      <div class="conf-bar-track"><div class="conf-bar-fill" id="confBarFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="result-block" id="credibilityBlock" style="margin-bottom:14px;display:none">
+      <div class="result-block-title">📈 Article Credibility Breakdown</div>
+      <div class="cred-bar-wrap">
+        <div class="cred-bar-track" id="credBarTrack">
+          <div class="cred-bar-segment cred-bar-truth" id="credBarTruth" style="width:0%"></div>
+          <div class="cred-bar-segment cred-bar-fake" id="credBarFake" style="width:0%"></div>
+        </div>
+        <div class="cred-bar-legend">
+          <span class="cred-legend-item"><span class="cred-dot cred-dot-truth"></span>Truthful content <strong id="credTruthPct">—%</strong></span>
+          <span class="cred-legend-item"><span class="cred-dot cred-dot-fake"></span>Fabricated / misleading <strong id="credFakePct">—%</strong></span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6">This reflects how much of the article's content is estimated to be accurate versus fabricated or misleading — an article can be mostly true with only a small fake portion, or vice versa.</p>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-block">
+        <div class="result-block-title">📋 AI Summary</div>
+        <p id="summaryText">—</p>
+      </div>
+      <div class="result-block">
+        <div class="result-block-title">🚩 Key Indicators</div>
+        <ul id="redFlagsList"></ul>
+      </div>
+    </div>
+    <div class="result-full">
+      <div class="result-block-title">💡 Recommendation</div>
+      <p id="recommendationText">—</p>
+    </div>
+
+    <div id="scoreBreakdown" style="display:none;margin-top:14px">
+      <div class="result-block-title" style="margin-bottom:10px">📊 Confidence Breakdown</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Claim Accuracy</div>
+          <div id="claimScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Language Quality</div>
+          <div id="languageScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Source Credibility</div>
+          <div id="sourceScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="selfCritiqueBlock" style="display:none;background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:12px;padding:16px;margin-top:14px">
+      <div class="result-block-title">🔄 AI Self-Critique</div>
+      <p id="selfCritiqueText" style="font-size:13px;color:var(--text-secondary);line-height:1.7">—</p>
+    </div>
+
+    <div id="keySourceBlock" style="display:none;background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:12px;padding:16px;margin-top:14px">
+      <div class="result-block-title">🔗 Key Grounding Source</div>
+      <p id="keySourceText" style="font-size:13px;color:var(--accent);line-height:1.7">—</p>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px">
+      <div class="ml-badge" id="mlBadge" style="margin-top:0">🤖 Model: —</div>
+      <button onclick="copyResult()" id="copyBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:7px 16px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">📋 Copy Result</button>
+    </div>
+  </div>
+
+  <div class="dashboard-title">📊 Live Analysis Insights</div>
+
+  <div class="dashboard-grid">
+
+    <div class="glass chart-card">
+      <div class="section-label">🧩 Your Analysis History</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="donutChart"></canvas>
+      </div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:10px">
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#5b8def;display:inline-block"></span>Fake <span id="fakeCount">0</span></span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#1c4ed8;display:inline-block"></span>Real <span id="realCount">0</span></span>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Based on articles YOU have analyzed</div>
+    </div>
+
+    <div class="glass chart-card">
+      <div class="section-label">🧠 How TruthScan AI Works</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">1️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">Extract Article</div>
+            <div style="font-size:11px;color:var(--text-muted)">Paste text or URL — smart extraction pipeline pulls clean content</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">2️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">LLaMA 3.3 70B Analysis</div>
+            <div style="font-size:11px;color:var(--text-muted)">Groq's LLM independently judges credibility using world knowledge</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">3️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">Verdict + Explanation</div>
+            <div style="font-size:11px;color:var(--text-muted)">Get a clear REAL/FAKE call with reasoning, not just a label</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass chart-card">
+      <div class="section-label">⚡ Powered By</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">AI Engine</div>
+          <div style="font-size:15px;font-weight:700;color:var(--accent);font-family:'Space Grotesk',sans-serif">LLaMA 3.3 70B</div>
+          <div style="font-size:10px;color:var(--text-muted)">via Groq — independent judgment, not dataset-limited</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">Article Extraction</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Trafilatura → Newspaper3k → BS4</div>
+          <div style="font-size:10px;color:var(--text-muted)">Works on BBC, CNN, Dawn, Al Jazeera, Geo & more</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">Fact Grounding (RAG)</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Live Web Search + Multi-Claim Check</div>
+          <div style="font-size:10px;color:var(--text-muted)">Verifies claims against current events, not just LLM memory</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div class="section-label">🗄️ About The Reference Dataset</div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
+      A traditional ML model (TF-IDF + Decision Tree) trained on 44,898 labeled articles is kept as a secondary reference signal, but <strong style="color:var(--text-secondary)">the final verdict always comes from the LLM</strong>, which reasons independently and isn't limited to old training data, a single language, or specific topics.
+      <br><br>Tilal Ahmed · Independent Project
+    </div>
+  </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div class="section-label" style="margin-bottom:0">⭐ Real Time Prediction History</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="exportHistoryCSV()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">⬇️ Export CSV</button>
+        <button onclick="loadHistory()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🔄 Refresh</button>
+        <button onclick="clearHistory()" style="background:var(--fake-bg);border:1px solid var(--fake-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--fake-color);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🗑️ Clear</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Article Preview</th>
+            <th>Prediction</th>
+            <th>Confidence</th>
+            <th>Model</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <tr>
+            <td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">
+              No predictions yet. Analyze some news! 😊
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div class="section-label">🔁 NLP & ML Pipeline</div>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="pipe-icon">🗄️</div><div class="pipe-name">News Dataset</div><div class="pipe-desc">Fake.csv + True.csv</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🧹</div><div class="pipe-name">Data Cleaning</div><div class="pipe-desc">Remove Noise</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">📝</div><div class="pipe-name">TF-IDF</div><div class="pipe-desc">Vectorization</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🧠</div><div class="pipe-name">ML Training</div><div class="pipe-desc">5 Algorithms</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🤖</div><div class="pipe-name">Groq LLM</div><div class="pipe-desc">LLaMA 3.3 70B</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🎯</div><div class="pipe-name">Verdict</div><div class="pipe-desc">Real / Fake + Why</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <div style="margin-bottom:10px">Built with <span>Flask + Groq LLaMA 3.3</span> · TruthScan AI</div>
+    <div style="margin-bottom:12px;color:var(--text-secondary)">Designed & Developed by <span style="color:var(--accent);font-weight:600">Tilal Ahmed</span></div>
+    <div style="display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap">
+      <a href="https://portfolio-eta-three-v6jh1t3uhf.vercel.app/" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">🌐 Portfolio</a>
+      <a href="https://github.com/TilalAhmed" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">💻 GitHub</a>
+      <a href="https://www.linkedin.com/in/tilal-ahmed-96778b311/" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">🔗 LinkedIn</a>
+      <a href="mailto:tilalahmed956@gmail.com" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">✉️ Email</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── Charts ──────────────────────────────────────────────
+let donutChartInstance = null;
+
+// Fallback if Chart.js fails to load
+if (typeof Chart === 'undefined') {
+  console.warn('Chart.js not available, charts will be skipped');
+}
+
+function initDonutChart(fakeCount, realCount) {
+  if (typeof Chart === 'undefined') {
+    console.warn('Cannot initialize chart: Chart.js not loaded');
+    return;
+  }
+
+  const ctx = document.getElementById('donutChart');
+  if (!ctx) return;
+
+  if (donutChartInstance) {
+    donutChartInstance.data.datasets[0].data = [fakeCount, realCount];
+    donutChartInstance.update();
+    return;
+  }
+
+  try {
+    donutChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Fake News', 'Real News'],
+        datasets: [{ 
+          data: [fakeCount, realCount], 
+          backgroundColor: ['#5b8def', '#1c4ed8'], 
+          borderWidth: 0, 
+          hoverOffset: 6 
+        }]
+      },
+      options: {
+        responsive: true, 
+        maintainAspectRatio: false, 
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { 
+            callbacks: { 
+              label: tooltipItem => ` ${tooltipItem.label}: ${tooltipItem.raw.toLocaleString()}` 
+            } 
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error('Failed to initialize chart:', e);
+  }
+}
+
+// Update live stats from prediction history
+async function updateLiveStats() {
+  try {
+    const response = await fetch('/history');
+    const data = await response.json();
+    const fakeCount = data.filter(r => r.prediction === 'FAKE').length;
+    const realCount = data.filter(r => r.prediction === 'REAL').length;
+    document.getElementById('fakeCount').textContent = fakeCount;
+    document.getElementById('realCount').textContent = realCount;
+    initDonutChart(fakeCount || 0, realCount || 0);
+  } catch (err) {
+    console.error('Could not load live stats:', err);
+    initDonutChart(1, 1);
+  }
+}
+updateLiveStats();
+
+// ── Analyzer ─────────────────────────────────────────────
+
+// Tab switching
+function switchTab(tab) {
+  const textDiv = document.getElementById('textInputDiv');
+  const urlDiv = document.getElementById('urlInputDiv');
+  const tabText = document.getElementById('tabText');
+  const tabUrl = document.getElementById('tabUrl');
+
+  if (tab === 'text') {
+    textDiv.style.display = 'block';
+    urlDiv.style.display = 'none';
+    tabText.style.background = 'var(--accent)';
+    tabText.style.color = '#fff';
+    tabText.style.border = 'none';
+    tabUrl.style.background = 'var(--accent-soft)';
+    tabUrl.style.color = 'var(--accent)';
+    tabUrl.style.border = '1px solid var(--glass-border)';
+  } else {
+    textDiv.style.display = 'none';
+    urlDiv.style.display = 'block';
+    tabUrl.style.background = 'var(--accent)';
+    tabUrl.style.color = '#fff';
+    tabUrl.style.border = 'none';
+    tabText.style.background = 'var(--accent-soft)';
+    tabText.style.color = 'var(--accent)';
+    tabText.style.border = '1px solid var(--glass-border)';
+  }
+}
+
+// Fetch article from URL
+async function fetchFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  const fetchedText = document.getElementById('fetchedText');
+  const errorMsg = document.getElementById('errorMsg');
+
+  errorMsg.classList.remove('visible');
+
+  if (!url) {
+    errorMsg.textContent = '⚠️ Please enter a URL first.';
+    errorMsg.classList.add('visible');
+    return false;
+  }
+
+  fetchedText.placeholder = '⏳ Fetching article...';
+  fetchedText.value = '';
+
+  try {
+    const response = await fetch('/fetch-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await response.json();
+
+    if (data.error) {
+      errorMsg.textContent = '⚠️ ' + data.error;
+      errorMsg.classList.add('visible');
+      fetchedText.placeholder = 'Fetched article will appear here automatically...';
+      return false;
+    }
+
+    fetchedText.value = data.text;
+    fetchedText.placeholder = 'Fetched article will appear here automatically...';
+    return true;
+  } catch (err) {
+    errorMsg.textContent = '⚠️ Could not fetch article. Try copying the text manually.';
+    errorMsg.classList.add('visible');
+    fetchedText.placeholder = 'Fetched article will appear here automatically...';
+    return false;
+  }
+}
+
+async function analyzeNews() {
+  const isUrlTab = document.getElementById('urlInputDiv').style.display !== 'none';
+  const btn = document.getElementById('analyzeBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const resultCard = document.getElementById('resultCard');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+
+  errorMsg.classList.remove('visible');
+  resultCard.classList.remove('visible');
+
+  let text;
+  if (isUrlTab) {
+    text = document.getElementById('fetchedText').value.trim();
+
+    if (!text) {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) {
+        errorMsg.textContent = '⚠️ Please enter a URL or paste an article first.';
+        errorMsg.classList.add('visible');
+        return;
+      }
+      document.getElementById('btnText').textContent = 'Fetching article...';
+      btn.disabled = true;
+      const fetchedOk = await fetchFromUrl();
+      btn.disabled = false;
+      document.getElementById('btnText').textContent = '🔍 Analyze News';
+      if (!fetchedOk) return;
+      text = document.getElementById('fetchedText').value.trim();
+    }
+  } else {
+    text = document.getElementById('newsInput').value.trim();
+  }
+
+  const model = document.getElementById('modelSelect').value;
+
+  if (!text) { 
+    errorMsg.textContent = '⚠️ Please paste a news article first.'; 
+    errorMsg.classList.add('visible'); 
+    return; 
+  }
+  if (text.split(' ').length < 5) { 
+    errorMsg.textContent = '⚠️ Too short — paste at least a sentence.'; 
+    errorMsg.classList.add('visible'); 
+    return; 
+  }
+
+  btn.disabled = true;
+  document.getElementById('btnText').textContent = 'Analyzing...';
+  document.getElementById('btnSpinner').style.display = 'block';
+  loadingOverlay.classList.add('visible');
+
+  try {
+    const response = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model })
+    });
+    const data = await response.json();
+    if (data.error) { 
+      errorMsg.textContent = '⚠️ ' + data.error; 
+      errorMsg.classList.add('visible'); 
+      return; 
+    }
+    renderResult(data);
+  } catch (err) {
+    errorMsg.textContent = '⚠️ Something went wrong. Make sure the server is running.';
+    errorMsg.classList.add('visible');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btnText').textContent = '🔍 Analyze News';
+    document.getElementById('btnSpinner').style.display = 'none';
+    loadingOverlay.classList.remove('visible');
+  }
+}
+
+let lastResultData = null;
+
+function renderResult(data) {
+  lastResultData = data;
+  const isReal = data.ml_label === 'REAL';
+  document.getElementById('verdictBanner').className = 'verdict-banner ' + (isReal ? 'real' : 'fake');
+  document.getElementById('confBarWrap').className = 'conf-bar-wrap ' + (isReal ? 'real' : 'fake');
+  document.getElementById('verdictIcon').textContent = isReal ? '✓' : '✗';
+  document.getElementById('verdictLabel').textContent = (isReal ? '✅ REAL' : '❌ FAKE') + ' NEWS';
+  document.getElementById('verdictSub').textContent = isReal ? 'This article appears credible.' : 'This article shows signs of misinformation.';
+  document.getElementById('confidenceNum').textContent = data.ml_confidence + '%';
+  document.getElementById('confBarPct').textContent = data.ml_confidence + '%';
+  setTimeout(() => { document.getElementById('confBarFill').style.width = data.ml_confidence + '%'; }, 100);
+
+  let truthPct = data.truth_percent;
+  let fakePct = data.fake_percent;
+  if (truthPct === undefined || truthPct === null) {
+    const subScores = [data.claim_score, data.language_score, data.source_score].filter(s => s !== undefined && s !== null);
+    if (subScores.length) {
+      const avg = subScores.reduce((a, b) => a + b, 0) / subScores.length;
+      truthPct = Math.round((avg / 10) * 1000) / 10;
+    } else {
+      truthPct = isReal ? 85 : 15;
+    }
+    fakePct = Math.round((100 - truthPct) * 10) / 10;
+  }
+  document.getElementById('credBarTruth').style.width = '0%';
+  document.getElementById('credBarFake').style.width = '0%';
+  setTimeout(() => {
+    document.getElementById('credBarTruth').style.width = truthPct + '%';
+    document.getElementById('credBarFake').style.width = fakePct + '%';
+  }, 100);
+  document.getElementById('credTruthPct').textContent = truthPct + '%';
+  document.getElementById('credFakePct').textContent = fakePct + '%';
+  document.getElementById('credibilityBlock').style.display = 'block';
+
+  const llm = data.llm_analysis || '';
+  document.getElementById('summaryText').textContent = extractSection(llm, 'SUMMARY') || 'Analysis complete.';
+  document.getElementById('recommendationText').textContent = extractSection(llm, 'RECOMMENDATION') || 'Verify with credible sources.';
+
+  const flagList = document.getElementById('redFlagsList');
+  flagList.innerHTML = '';
+  const redFlags = extractSection(llm, 'RED FLAGS') || '';
+  redFlags.split('\n').filter(l => l.trim()).slice(0, 4).forEach(flag => {
+    const li = document.createElement('li');
+    li.textContent = flag.replace(/^[-•*\d.]+\s*/, '').trim();
+    flagList.appendChild(li);
+  });
+  if (!flagList.children.length) {
+    const li = document.createElement('li');
+    li.textContent = isReal ? 'Credible source indicators found' : 'Suspicious language detected';
+    flagList.appendChild(li);
+  }
+
+  if (data.claim_score || data.language_score || data.source_score) {
+    const scoreColor = (s) => s >= 7 ? 'var(--real-color)' : s >= 4 ? '#fbbf24' : 'var(--fake-color)';
+    document.getElementById('claimScore').textContent = data.claim_score ?? '—';
+    document.getElementById('claimScore').style.color = data.claim_score ? scoreColor(data.claim_score) : 'var(--text-muted)';
+    document.getElementById('languageScore').textContent = data.language_score ?? '—';
+    document.getElementById('languageScore').style.color = data.language_score ? scoreColor(data.language_score) : 'var(--text-muted)';
+    document.getElementById('sourceScore').textContent = data.source_score ?? '—';
+    document.getElementById('sourceScore').style.color = data.source_score ? scoreColor(data.source_score) : 'var(--text-muted)';
+    document.getElementById('scoreBreakdown').style.display = 'block';
+  }
+
+  if (data.self_critique) {
+    document.getElementById('selfCritiqueText').textContent = data.self_critique;
+    document.getElementById('selfCritiqueBlock').style.display = 'block';
+  }
+
+  if (data.key_source && data.key_source.toLowerCase() !== 'none') {
+    document.getElementById('keySourceText').textContent = '📰 ' + data.key_source;
+    document.getElementById('keySourceBlock').style.display = 'block';
+  }
+
+  document.getElementById('mlBadge').textContent = '🤖 Model: ' + data.model_used + ' · ' + data.ml_confidence + '% confidence';
+  document.getElementById('resultCard').classList.add('visible');
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  loadHistory();
+  updateLiveStats();
+}
+
+function extractSection(text, section) {
+  const regex = new RegExp('(?:###\\s*|\\*\\*)?' + section + ':?\\*?\\*?\\s*([\\s\\S]*?)(?=\\n(?:###\\s*|\\*\\*)?[A-Z ]+:?|$)', 'i');
+  const match = text.match(regex);
+  return match ? match[1].trim() : '';
+}
+
+// Load real time history
+async function loadHistory() {
+  try {
+    const response = await fetch('/history');
+    const data = await response.json();
+    const tbody = document.getElementById('historyTableBody');
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">
+            No predictions yet. Analyze some news! 😊
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(row => `
+      <tr>
+        <td style="color:var(--text-muted)">${row.id}</td>
+        <td>${row.headline.substring(0, 60)}...</td>
+        <td><span class="badge ${row.prediction === 'REAL' ? 'badge-real' : 'badge-fake'}">${row.prediction}</span></td>
+        <td style="color:${row.prediction === 'REAL' ? 'var(--real-color)' : 'var(--fake-color)'};font-weight:600">${row.confidence}%</td>
+        <td style="color:var(--text-muted);font-size:11px">${row.model_used}</td>
+        <td style="color:var(--text-muted)">${row.date}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('History load failed:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const newsInput = document.getElementById('newsInput');
+  if (newsInput) {
+    newsInput.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyzeNews();
+    });
+  }
+  loadHistory();
+});
+
+// Copy result to clipboard
+function copyResult() {
+  if (!lastResultData) return;
+  const d = lastResultData;
+  const summary = extractSection(d.llm_analysis, 'SUMMARY') || '';
+  const recommendation = extractSection(d.llm_analysis, 'RECOMMENDATION') || '';
+  const scores = (d.claim_score || d.language_score || d.source_score)
+    ? `\nScore Breakdown:\n  Claim Accuracy: ${d.claim_score ?? '—'}/10\n  Language Quality: ${d.language_score ?? '—'}/10\n  Source Credibility: ${d.source_score ?? '—'}/10`
+    : '';
+  const credibility = (d.truth_percent !== undefined && d.truth_percent !== null)
+    ? `\nCredibility Breakdown: ${d.truth_percent}% truthful · ${d.fake_percent}% fabricated/misleading`
+    : '';
+  const critique = d.self_critique ? `\nAI Self-Critique: ${d.self_critique}` : '';
+  const source = (d.key_source && d.key_source.toLowerCase() !== 'none') ? `\nKey Grounding Source: ${d.key_source}` : '';
+  const text = `TruthScan AI — Analysis Result
+Verdict: ${d.ml_label}
+Confidence: ${d.ml_confidence}%
+Model Used: ${d.model_used}${scores}${credibility}${critique}${source}
+
+Summary: ${summary}
+
+Recommendation: ${recommendation}
+
+Analyzed by TruthScan AI — Built by Tilal Ahmed`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const original = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }).catch(() => {
+    alert('Could not copy automatically. Please select and copy manually.');
+  });
+}
+
+// Clear history
+async function clearHistory() {
+  if (!confirm('Are you sure you want to delete all prediction history? This cannot be undone.')) return;
+  try {
+    const response = await fetch('/clear-history', { method: 'POST' });
+    const data = await response.json();
+    if (data.success) {
+      loadHistory();
+      updateLiveStats();
+    }
+  } catch (err) {
+    console.error('Clear history failed:', err);
+  }
+}
+
+// Export history as CSV
+async function exportHistoryCSV() {
+  try {
+    const response = await fetch('/history');
+    const data = await response.json();
+    if (!data || data.length === 0) {
+      alert('No history to export yet.');
+      return;
+    }
+    let csv = 'ID,Headline,Prediction,Confidence,Model,Date\n';
+    data.forEach(row => {
+      const headline = row.headline.replace(/"/g, '""').replace(/\n/g, ' ');
+      csv += `${row.id},"${headline}",${row.prediction},${row.confidence},${row.model_used},"${row.date}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'truthscan_history.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error('Export failed:', err);
+    alert('Could not export history.');
+  }
+}
+</script>
+</body>
+</html>

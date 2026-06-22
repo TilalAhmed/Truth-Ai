@@ -1,0 +1,6 @@
+libxml2
+libxslt1-dev
+build-essential
+ca-certificates
+openssl
+gcc

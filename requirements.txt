@@ -1,0 +1,12 @@
+Flask==3.0.0
+groq==0.9.0
+scikit-learn==1.7.1
+requests==2.31.0
+beautifulsoup4==4.12.2
+trafilatura==1.6.1
+newspaper3k==0.2.8
+duckduckgo-search==3.9.10
+gunicorn==21.2.0
+python-dotenv
+lxml_html_clean
+httpx==0.27.2
