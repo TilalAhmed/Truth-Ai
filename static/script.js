@@ -283,7 +283,10 @@ function renderResult(data) {
   }
 
   if (data.self_critique) {
-    document.getElementById('selfCritiqueText').textContent = data.self_critique;
+    // Backend sometimes bundles a "RED FLAGS:" section inside self_critique text —
+    // red flags already have their own dedicated box above, so strip any duplicate here.
+    const cleanCritique = data.self_critique.split(/RED FLAGS\s*:/i)[0].trim();
+    document.getElementById('selfCritiqueText').textContent = cleanCritique || data.self_critique;
     document.getElementById('selfCritiqueBlock').style.display = 'block';
   }
 
