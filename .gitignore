@@ -1,7 +1,33 @@
-# Ignore local environment variables and secrets
+# Secrets / environment
 .env
+.env.*
+!.env.example
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# App data (must never be committed - may contain analyzed article text)
 models/*.pkl
+*.db
+*.sqlite3
 history.db
+
+# Logs
+*.log
+
+# OS / editor cruft
 .DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
