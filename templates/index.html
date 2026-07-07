@@ -5,22 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="description" content="TruthScan AI - Fake News Detector powered by LLaMA 3.3 and Machine Learning"/>
   <meta name="theme-color" content="#388bfd"/>
-  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>TruthScan AI — Fake News Detector</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
-  <!-- Chart.js for your Round Comparison Chart -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<div class="bg-orbs" style="pointer-events: none; z-index: -1;">
+<div class="bg-orbs">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
 </div>
 
 <div class="wrapper">
+
   <header>
     <div class="logo-badge"><span class="dot"></span> Groq LLaMA 3.3 · Live</div>
     <h1>TruthScan AI</h1>
@@ -31,93 +30,82 @@
     <div class="glass stat-card"><div class="stat-num">LLaMA 3.3</div><div class="stat-label">AI Engine</div></div>
     <div class="glass stat-card"><div class="stat-num">70B</div><div class="stat-label">Parameters</div></div>
     <div class="glass stat-card"><div class="stat-num">URL or Text</div><div class="stat-label">Flexible Input</div></div>
-    <div class="glass stat-card"><div class="stat-num">Any</div><div class="stat-label">Language</div></div>
+    <div class="glass stat-card"><div class="stat-num">Any</div><div class="stat-label">Language / Topic</div></div>
     <div class="glass stat-card"><div class="stat-num">Groq</div><div class="stat-label">Inference Speed</div></div>
   </div>
 
   <div class="glass analyzer-card">
-    <div class="section-label">📰 Live News Analyzer & Extraction Matrix</div>
-    
-    <!-- Restored Tools / Navigation Tabs Selection -->
-    <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap: wrap;">
-      <button id="tabText" onclick="switchTab('text')" style="background:var(--accent); border:none; border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600; color:#fff; cursor:pointer;">📝 Paste Text</button>
-      <button id="tabUrl" onclick="switchTab('url')" style="background:var(--accent-soft); border:1px solid var(--glass-border); border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">🔗 Extraction Tools Tab</button>
+    <div class="section-label">📰 Live News Analyzer</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tabText" style="background:var(--accent);border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">📝 Paste Text</button>
+      <button id="tabUrl" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">🔗 Paste URL</button>
     </div>
 
     <div id="textInputDiv">
-      <textarea id="newsInput" placeholder="Paste article content here... (Min 20 characters)"></textarea>
+      <textarea id="newsInput" placeholder="Paste a news article, headline, or any text here to analyze... (Ctrl+Enter to submit)" role="textbox" aria-label="News article text input"></textarea>
     </div>
 
-    <!-- Extraction Matrix / Info Tools Tab Panel -->
     <div id="urlInputDiv" style="display:none">
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 12px;">
-        <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1; min-width:200px; background:rgba(2,11,24,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:14px 16px; color:var(--text-primary); outline:none;"/>
-        <button onclick="fetchFromUrl()" style="background:var(--accent-soft); border:1px solid var(--glass-border); border-radius:10px; padding:14px 18px; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">📥 Fetch & Extract</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1;min-width:200px;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:14px;color:var(--text-primary);outline:none;" aria-label="News article URL input"/>
+        <button id="fetchArticleBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:10px;padding:14px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap">📥 Fetch Article</button>
       </div>
-      <div class="extraction-info-box" style="background: rgba(56, 139, 253, 0.05); border: 1px dashed var(--glass-border); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
-        ℹ️ <strong>Extraction Engine Protocol:</strong> Strips down scripts, cross-references tags via Trafilatura + Newspaper3k, and sanitizes core metadata records to isolate body copies.
+      <div style="margin-top:10px">
+        <textarea id="fetchedText" placeholder="Fetched article will appear here automatically..." rows="5" style="width:100%;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:16px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text-secondary);outline:none;resize:vertical" aria-label="Fetched article content"></textarea>
       </div>
-      <div>
-        <textarea id="fetchedText" placeholder="Extracted article components will stream here..." rows="5" readonly style="width:100%; color:var(--text-secondary); background: rgba(0,0,0,0.2);"></textarea>
-      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">✅ Works best with: Dawn, Al Jazeera and most regional news sites. BBC/CNN/Reuters often block fetching — paste text manually for those.</div>
     </div>
-
     <div class="controls-row">
-      <select id="modelSelect" aria-label="Select ML reference model">
+      <select id="modelSelect" aria-label="Select ML model for analysis">
         {% for model in models %}
         <option value="{{ model }}">{{ model }}</option>
         {% endfor %}
       </select>
-      <button class="btn-analyze" id="analyzeBtn" onclick="analyzeNews()">
+      <button class="btn-analyze" id="analyzeBtn" aria-label="Analyze the news article">
         <span id="btnText">🔍 Analyze News</span>
+        <div class="spinner" id="btnSpinner"></div>
       </button>
     </div>
     <div class="error-msg" id="errorMsg" role="alert"></div>
   </div>
 
-  <!-- Loading State Panel Overlay -->
-  <div class="loading-overlay" id="loadingOverlay" style="display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+  <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
     <div class="loading-spinner-big"></div>
-    <div class="loading-text" style="color: #fff; font-weight: 500;">Analyzing with AI Pipeline...</div>
+    <div class="loading-text">Analyzing with AI...</div>
+    <div class="loading-sub">ML model + Groq LLaMA 3.3 working together</div>
   </div>
 
-  <!-- Results Dashboard -->
-  <div class="glass result-card" id="resultCard" style="display: none;">
+  <div class="glass result-card" id="resultCard">
     <div class="verdict-banner" id="verdictBanner">
       <div class="verdict-icon" id="verdictIcon"></div>
       <div style="flex:1">
         <div class="verdict-label" id="verdictLabel"></div>
-        <div class="verdict-sub" id="verdictSub">Analytical Verification Score</div>
+        <div class="verdict-sub" id="verdictSub"></div>
       </div>
       <div class="confidence-wrap">
         <div class="confidence-num" id="confidenceNum"></div>
-        <div class="confidence-label">System Confidence</div>
+        <div class="confidence-label">ML Confidence</div>
       </div>
     </div>
-
-    <!-- Restored Real vs Fake News Round Chart Comparison -->
-    <div class="result-block" style="margin: 20px 0;">
-      <div class="result-block-title">📊 Real vs Fake News Round Comparison Chart</div>
-      <div style="display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap; margin-top: 15px;">
-        <div style="width: 200px; height: 200px; position: relative;">
-          <canvas id="roundComparisonChart"></canvas>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="width: 14px; height: 14px; background-color: #238636; border-radius: 4px; display: inline-block;"></span>
-            <span>Truthful Credibility Indicator: <strong id="chartTruthLabel">0%</strong></span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="width: 14px; height: 14px; background-color: #da3637; border-radius: 4px; display: inline-block;"></span>
-            <span>Misleading / Fiction Probability: <strong id="chartFakeLabel">0%</strong></span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="conf-bar-wrap">
-      <div class="conf-bar-label"><span>Confidence Spectrum</span><span id="confBarPct"></span></div>
+    <div class="conf-bar-wrap" id="confBarWrap">
+      <div class="conf-bar-label"><span>Confidence Score</span><span id="confBarPct"></span></div>
       <div class="conf-bar-track"><div class="conf-bar-fill" id="confBarFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="result-block" id="credibilityBlock" style="margin-bottom:14px;display:none">
+      <div class="result-block-title">📈 Article Credibility Breakdown</div>
+      <div class="cred-bar-wrap">
+        <div class="cred-bar-track" id="credBarTrack">
+          <div class="cred-bar-segment cred-bar-truth" id="credBarTruth" style="width:0%"></div>
+          <div class="cred-bar-segment cred-bar-fake" id="credBarFake" style="width:0%"></div>
+        </div>
+        <div class="cred-bar-legend">
+          <span class="cred-legend-item"><span class="cred-dot cred-dot-truth"></span>Truthful content <strong id="credTruthPct">—%</strong></span>
+          <span class="cred-legend-item"><span class="cred-dot cred-dot-fake"></span>Fabricated / misleading <strong id="credFakePct">—%</strong></span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6">This reflects how much of the article's content is estimated to be accurate versus fabricated or misleading — an article can be mostly true with only a small fake portion, or vice versa.</p>
     </div>
 
     <div class="result-grid">
@@ -126,45 +114,186 @@
         <p id="summaryText">—</p>
       </div>
       <div class="result-block">
-        <div class="result-block-title">🚩 Key Indicators & Red Flags</div>
+        <div class="result-block-title">🚩 Key Indicators</div>
         <ul id="redFlagsList"></ul>
       </div>
     </div>
-
-    <div class="result-full" style="margin-top:14px;">
-      <div class="result-block-title">💡 System Recommendation</div>
+    <div class="result-full">
+      <div class="result-block-title">💡 Recommendation</div>
       <p id="recommendationText">—</p>
     </div>
 
-    <div style="display:flex; align-items:center; justify-content:between; margin-top:16px; flex-wrap: wrap; gap: 10px;">
-      <div class="ml-badge" id="mlBadge" style="color:var(--accent)">🤖 Model Configured</div>
-      <button onclick="copyResult()" id="copyBtn" style="background:var(--accent-soft); border:1px solid var(--glass-border); color:var(--accent); padding:7px 16px; border-radius:8px; cursor:pointer;">📋 Copy Result</button>
+    <div id="scoreBreakdown" style="display:none;margin-top:14px">
+      <div class="result-block-title" style="margin-bottom:10px">📊 Confidence Breakdown</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Claim Accuracy</div>
+          <div id="claimScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Language Quality</div>
+          <div id="languageScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Source Credibility</div>
+          <div id="sourceScore" style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">—</div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">out of 10</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="selfCritiqueBlock" style="display:none;background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:12px;padding:16px;margin-top:14px">
+      <div class="result-block-title">🔄 AI Self-Critique</div>
+      <p id="selfCritiqueText" style="font-size:13px;color:var(--text-secondary);line-height:1.7">—</p>
+    </div>
+
+    <div id="keySourceBlock" style="display:none;background:rgba(2,11,24,0.45);border:1px solid rgba(56,139,253,0.1);border-radius:12px;padding:16px;margin-top:14px">
+      <div class="result-block-title">🔗 Key Grounding Source</div>
+      <p id="keySourceText" style="font-size:13px;color:var(--accent);line-height:1.7">—</p>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px">
+      <div class="ml-badge" id="mlBadge" style="margin-top:0">🤖 Model: —</div>
+      <button id="copyBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:7px 16px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">📋 Copy Result</button>
     </div>
   </div>
 
-  <!-- Real Time Prediction History Log -->
-  <div class="glass chart-card" style="margin-bottom:24px; padding:20px;">
-    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:16px; flex-wrap: wrap; gap: 10px;">
-      <div class="section-label">⭐ Real Time Prediction History</div>
-      <div>
-        <button onclick="loadHistory()" style="background:var(--accent-soft); border:1px solid var(--glass-border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer;">🔄 Refresh</button>
-        <button onclick="clearHistory()" style="background:var(--fake-bg); border:1px solid var(--fake-border); color:var(--fake-color); padding:6px 14px; border-radius:8px; cursor:pointer;">🗑️ Clear All</button>
+  <div class="dashboard-title">📊 Live Analysis Insights</div>
+
+  <div class="dashboard-grid">
+
+    <div class="glass chart-card">
+      <div class="section-label">🧩 Your Analysis History</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="donutChart"></canvas>
+      </div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:10px">
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#5b8def;display:inline-block"></span>Fake <span id="fakeCount">0</span></span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#1c4ed8;display:inline-block"></span>Real <span id="realCount">0</span></span>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Based on articles YOU have analyzed</div>
+    </div>
+
+    <div class="glass chart-card">
+      <div class="section-label">🧠 How TruthScan AI Works</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">1️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">Extract Article</div>
+            <div style="font-size:11px;color:var(--text-muted)">Paste text or URL — smart extraction pipeline pulls clean content</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">2️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">LLaMA 3.3 70B Analysis</div>
+            <div style="font-size:11px;color:var(--text-muted)">Groq's LLM independently judges credibility using world knowledge</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:18px">3️⃣</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">Verdict + Explanation</div>
+            <div style="font-size:11px;color:var(--text-muted)">Get a clear REAL/FAKE call with reasoning, not just a label</div>
+          </div>
+        </div>
       </div>
     </div>
-    <div style="overflow-x:auto">
-      <table class="history-table" style="width:100%; border-collapse:collapse; text-align:left;">
+
+    <div class="glass chart-card">
+      <div class="section-label">⚡ Powered By</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">AI Engine</div>
+          <div style="font-size:15px;font-weight:700;color:var(--accent);font-family:'Space Grotesk',sans-serif">LLaMA 3.3 70B</div>
+          <div style="font-size:10px;color:var(--text-muted)">via Groq — independent judgment, not dataset-limited</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">Article Extraction</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Trafilatura → Newspaper3k → BS4</div>
+          <div style="font-size:10px;color:var(--text-muted)">Works on BBC, CNN, Dawn, Al Jazeera, Geo & more</div>
+        </div>
+        <div style="background:rgba(2,11,24,0.5);border:1px solid var(--glass-border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--text-muted)">Fact Grounding (RAG)</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Live Web Search + Multi-Claim Check</div>
+          <div style="font-size:10px;color:var(--text-muted)">Verifies claims against current events, not just LLM memory</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div class="section-label">🗄️ About The Reference Dataset</div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
+      A traditional ML model (TF-IDF + Decision Tree) trained on 44,898 labeled articles is kept as a secondary reference signal, but <strong style="color:var(--text-secondary)">the final verdict always comes from the LLM</strong>, which reasons independently and isn't limited to old training data, a single language, or specific topics.
+      <br><br>Tilal Ahmed · Independent Project
+    </div>
+  </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div class="section-label" style="margin-bottom:0">⭐ Real Time Prediction History</div>
+      <div style="display:flex;gap:8px">
+        <button id="exportCsvBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">⬇️ Export CSV</button>
+        <button id="refreshHistoryBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🔄 Refresh</button>
+        <button id="clearHistoryBtn" style="background:var(--fake-bg);border:1px solid var(--fake-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--fake-color);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🗑️ Clear</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="history-table">
         <thead>
-          <tr style="border-bottom:1px solid var(--glass-border);">
-            <th style="padding:10px;">Preview</th>
-            <th style="padding:10px;">Verdict</th>
-            <th style="padding:10px;">Confidence</th>
-            <th style="padding:10px;">Date</th>
+          <tr>
+            <th>#</th>
+            <th>Article Preview</th>
+            <th>Prediction</th>
+            <th>Confidence</th>
+            <th>Model</th>
+            <th>Date</th>
           </tr>
         </thead>
-        <tbody id="historyTableBody"></tbody>
+        <tbody id="historyTableBody">
+          <tr>
+            <td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">
+              No predictions yet. Analyze some news! 😊
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
   </div>
+
+  <div class="glass chart-card" style="margin-bottom:24px">
+    <div class="section-label">🔁 NLP & ML Pipeline</div>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="pipe-icon">🗄️</div><div class="pipe-name">News Dataset</div><div class="pipe-desc">Fake.csv + True.csv</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🧹</div><div class="pipe-name">Data Cleaning</div><div class="pipe-desc">Remove Noise</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">📝</div><div class="pipe-name">TF-IDF</div><div class="pipe-desc">Vectorization</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🧠</div><div class="pipe-name">ML Training</div><div class="pipe-desc">5 Algorithms</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🤖</div><div class="pipe-name">Groq LLM</div><div class="pipe-desc">LLaMA 3.3 70B</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="pipe-icon">🎯</div><div class="pipe-name">Verdict</div><div class="pipe-desc">Real / Fake + Why</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <div style="margin-bottom:10px">Built with <span>Flask + Groq LLaMA 3.3</span> · TruthScan AI</div>
+    <div style="margin-bottom:12px;color:var(--text-secondary)">Designed & Developed by <span style="color:var(--accent);font-weight:600">Tilal Ahmed</span></div>
+    <div style="display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap">
+      <a href="https://portfolio-eta-three-v6jh1t3uhf.vercel.app/" target="_blank" rel="noopener noreferrer" class="footer-link">🌐 Portfolio</a>
+      <a href="https://github.com/TilalAhmed" target="_blank" rel="noopener noreferrer" class="footer-link">💻 GitHub</a>
+      <a href="https://www.linkedin.com/in/tilal-ahmed-96778b311/" target="_blank" rel="noopener noreferrer" class="footer-link">🔗 LinkedIn</a>
+      <a href="mailto:tilalahmed956@gmail.com" class="footer-link">✉️ Email</a>
+    </div>
+  </footer>
+
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
