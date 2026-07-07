@@ -1,8 +1,9 @@
 /**
- * TruthScan AI - Client Side Hardening & UI Control Pipeline
+ * TruthScan AI - Client Side Logic Pipeline with Round Chart Instantiation
  */
 
-// Cross-Site Scripting (XSS) Mitigation Encoder
+let roundChartInstance = null;
+
 function escapeHTML(str) {
     if (!str) return '';
     return str.replace(/[&<>'"]/g, 
@@ -29,14 +30,14 @@ function switchTab(type) {
     document.getElementById('tabText').style.background = isText ? 'var(--accent)' : 'var(--accent-soft)';
     document.getElementById('tabText').style.color = isText ? '#fff' : 'var(--accent)';
     document.getElementById('tabUrl').style.background = isText ? 'var(--accent-soft)' : 'var(--accent)';
-    document.getElementById('tabUrl').style.color = isText ? 'var(--accent)' : '#fff';
+    document.getElementById('tabUrl').style.color = isText ? '#fff' : 'var(--accent)';
 }
 
 async function fetchFromUrl() {
     const urlVal = document.getElementById('urlInput').value.trim();
     const errorMsg = document.getElementById('errorMsg');
     if(!urlVal) {
-        errorMsg.textContent = "Please input a valid target link.";
+        errorMsg.textContent = "Please provide a valid source URL link.";
         errorMsg.classList.add('visible');
         return;
     }
@@ -52,7 +53,7 @@ async function fetchFromUrl() {
             body: JSON.stringify({ url: urlVal })
         });
         const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Extraction failed.");
+        if(!res.ok) throw new Error(data.error || "Extraction pipeline failure.");
         
         document.getElementById('fetchedText').value = data.text;
     } catch(err) {
@@ -75,7 +76,7 @@ async function analyzeNews() {
     
     errorMsg.classList.remove('visible');
     card.style.display = 'none';
-    overlay.classList.add('visible');
+    overlay.style.display = 'flex'; // Overlay fix Applied
     
     try {
         const res = await fetch('/analyze', {
@@ -87,9 +88,9 @@ async function analyzeNews() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Analysis pipeline error.");
+        if(!res.ok) throw new Error(data.error || "Verification tracking error.");
         
-        // Update UX parameters cleanly with XSS protection
+        // Setup Banner State
         const banner = document.getElementById('verdictBanner');
         banner.className = 'verdict-banner ' + data.ml_label.toLowerCase();
         
@@ -100,12 +101,13 @@ async function analyzeNews() {
         document.getElementById('confBarFill').style.width = data.ml_confidence + '%';
         document.getElementById('confBarPct').textContent = data.ml_confidence + '%';
         
-        document.getElementById('credBarTruth').style.width = data.truth_percent + '%';
-        document.getElementById('credBarFake').style.width = data.fake_percent + '%';
-        document.getElementById('credTruthPct').textContent = data.truth_percent + '%';
-        document.getElementById('credFakePct').textContent = data.fake_percent + '%';
+        // Update Round Chart Info Indicators
+        document.getElementById('chartTruthLabel').textContent = data.truth_percent + '%';
+        document.getElementById('chartFakeLabel').textContent = data.fake_percent + '%';
         
-        // Parsing layout details directly out of lines safely
+        // Instantiate/Rebuild Real vs Fake Round Chart
+        renderRoundChart(data.truth_percent, data.fake_percent);
+
         let summary = "No distinct analysis compiled.";
         let rec = "Verify with local trusted platforms.";
         let flags = [];
@@ -144,8 +146,40 @@ async function analyzeNews() {
         errorMsg.textContent = err.message;
         errorMsg.classList.add('visible');
     } finally {
-        overlay.classList.remove('visible');
+        overlay.style.display = 'none'; // Clear overlay layout safely
     }
+}
+
+function renderRoundChart(truthPct, fakePct) {
+    const ctx = document.getElementById('roundComparisonChart');
+    if (!ctx) return;
+
+    // Terminate existing pointer structures before building to prevent layout leakage
+    if (roundChartInstance !== null) {
+        roundChartInstance.destroy();
+    }
+
+    roundChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Truthful', 'Misleading'],
+            datasets: [{
+                data: [truthPct, fakePct],
+                backgroundColor: ['#238636', '#da3637'],
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            cutout: '70%'
+        }
+    });
 }
 
 async function loadHistory() {
@@ -164,7 +198,6 @@ async function loadHistory() {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid rgba(56,139,253,0.1)';
             
-            // Generate table data securely using programmatic elements
             const tdHead = document.createElement('td');
             tdHead.style.padding = '10px';
             tdHead.textContent = row.headline ? row.headline.substring(0, 50) + '...' : 'Unknown';
@@ -172,7 +205,7 @@ async function loadHistory() {
             const tdPred = document.createElement('td');
             tdPred.style.padding = '10px';
             tdPred.style.fontWeight = 'bold';
-            tdPred.style.color = row.prediction === 'REAL' ? 'var(--real-color)' : 'var(--fake-color)';
+            tdPred.style.color = row.prediction === 'REAL' ? '#238636' : '#da3637';
             tdPred.textContent = row.prediction;
             
             const tdConf = document.createElement('td');
