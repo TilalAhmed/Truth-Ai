@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="description" content="TruthScan AI - Fake News Detector powered by LLaMA 3.3 and Machine Learning"/>
   <meta name="theme-color" content="#388bfd"/>
-  <!-- Anti-CSRF Token Generation -->
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>TruthScan AI — Fake News Detector</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <!-- Chart.js for your Round Comparison Chart -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<div class="bg-orbs">
+<div class="bg-orbs" style="pointer-events: none; z-index: -1;">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
@@ -36,23 +36,29 @@
   </div>
 
   <div class="glass analyzer-card">
-    <div class="section-label">📰 Live News Analyzer</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="tabText" onclick="switchTab('text')" style="background:var(--accent);border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;">📝 Paste Text</button>
-      <button id="tabUrl" onclick="switchTab('url')" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">🔗 Paste URL</button>
+    <div class="section-label">📰 Live News Analyzer & Extraction Matrix</div>
+    
+    <!-- Restored Tools / Navigation Tabs Selection -->
+    <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap: wrap;">
+      <button id="tabText" onclick="switchTab('text')" style="background:var(--accent); border:none; border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600; color:#fff; cursor:pointer;">📝 Paste Text</button>
+      <button id="tabUrl" onclick="switchTab('url')" style="background:var(--accent-soft); border:1px solid var(--glass-border); border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">🔗 Extraction Tools Tab</button>
     </div>
 
     <div id="textInputDiv">
       <textarea id="newsInput" placeholder="Paste article content here... (Min 20 characters)"></textarea>
     </div>
 
+    <!-- Extraction Matrix / Info Tools Tab Panel -->
     <div id="urlInputDiv" style="display:none">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1;min-width:200px;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;color:var(--text-primary);outline:none;"/>
-        <button onclick="fetchFromUrl()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:10px;padding:14px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">📥 Fetch Article</button>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 12px;">
+        <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1; min-width:200px; background:rgba(2,11,24,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:14px 16px; color:var(--text-primary); outline:none;"/>
+        <button onclick="fetchFromUrl()" style="background:var(--accent-soft); border:1px solid var(--glass-border); border-radius:10px; padding:14px 18px; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">📥 Fetch & Extract</button>
       </div>
-      <div style="margin-top:10px">
-        <textarea id="fetchedText" placeholder="Fetched text contents display here..." rows="5" readonly style="width:100%;color:var(--text-secondary);"></textarea>
+      <div class="extraction-info-box" style="background: rgba(56, 139, 253, 0.05); border: 1px dashed var(--glass-border); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
+        ℹ️ <strong>Extraction Engine Protocol:</strong> Strips down scripts, cross-references tags via Trafilatura + Newspaper3k, and sanitizes core metadata records to isolate body copies.
+      </div>
+      <div>
+        <textarea id="fetchedText" placeholder="Extracted article components will stream here..." rows="5" readonly style="width:100%; color:var(--text-secondary); background: rgba(0,0,0,0.2);"></textarea>
       </div>
     </div>
 
@@ -64,27 +70,48 @@
       </select>
       <button class="btn-analyze" id="analyzeBtn" onclick="analyzeNews()">
         <span id="btnText">🔍 Analyze News</span>
-        <div class="spinner" id="btnSpinner"></div>
       </button>
     </div>
     <div class="error-msg" id="errorMsg" role="alert"></div>
   </div>
 
-  <div class="loading-overlay" id="loadingOverlay">
+  <!-- Loading State Panel Overlay -->
+  <div class="loading-overlay" id="loadingOverlay" style="display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
     <div class="loading-spinner-big"></div>
-    <div class="loading-text">Analyzing with AI...</div>
+    <div class="loading-text" style="color: #fff; font-weight: 500;">Analyzing with AI Pipeline...</div>
   </div>
 
-  <div class="glass result-card" id="resultCard">
+  <!-- Results Dashboard -->
+  <div class="glass result-card" id="resultCard" style="display: none;">
     <div class="verdict-banner" id="verdictBanner">
       <div class="verdict-icon" id="verdictIcon"></div>
       <div style="flex:1">
         <div class="verdict-label" id="verdictLabel"></div>
-        <div class="verdict-sub" id="verdictSub"></div>
+        <div class="verdict-sub" id="verdictSub">Analytical Verification Score</div>
       </div>
       <div class="confidence-wrap">
         <div class="confidence-num" id="confidenceNum"></div>
         <div class="confidence-label">System Confidence</div>
+      </div>
+    </div>
+
+    <!-- Restored Real vs Fake News Round Chart Comparison -->
+    <div class="result-block" style="margin: 20px 0;">
+      <div class="result-block-title">📊 Real vs Fake News Round Comparison Chart</div>
+      <div style="display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap; margin-top: 15px;">
+        <div style="width: 200px; height: 200px; position: relative;">
+          <canvas id="roundComparisonChart"></canvas>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 14px; height: 14px; background-color: #238636; border-radius: 4px; display: inline-block;"></span>
+            <span>Truthful Credibility Indicator: <strong id="chartTruthLabel">0%</strong></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 14px; height: 14px; background-color: #da3637; border-radius: 4px; display: inline-block;"></span>
+            <span>Misleading / Fiction Probability: <strong id="chartFakeLabel">0%</strong></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -93,27 +120,13 @@
       <div class="conf-bar-track"><div class="conf-bar-fill" id="confBarFill" style="width:0%"></div></div>
     </div>
 
-    <div class="result-block" id="credibilityBlock" style="margin-bottom:14px;">
-      <div class="result-block-title">📈 Article Credibility Breakdown</div>
-      <div class="cred-bar-wrap">
-        <div class="cred-bar-track">
-          <div class="cred-bar-segment cred-bar-truth" id="credBarTruth" style="width:0%"></div>
-          <div class="cred-bar-segment cred-bar-fake" id="credBarFake" style="width:0%"></div>
-        </div>
-        <div class="cred-bar-legend">
-          <span class="cred-legend-item"><span class="cred-dot cred-dot-truth"></span>Truthful <strong id="credTruthPct">—%</strong></span>
-          <span class="cred-legend-item"><span class="cred-dot cred-dot-fake"></span>Misleading <strong id="credFakePct">—%</strong></span>
-        </div>
-      </div>
-    </div>
-
     <div class="result-grid">
       <div class="result-block">
         <div class="result-block-title">📋 AI Summary</div>
         <p id="summaryText">—</p>
       </div>
       <div class="result-block">
-        <div class="result-block-title">🚩 Key Indicators</div>
+        <div class="result-block-title">🚩 Key Indicators & Red Flags</div>
         <ul id="redFlagsList"></ul>
       </div>
     </div>
@@ -123,22 +136,23 @@
       <p id="recommendationText">—</p>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
+    <div style="display:flex; align-items:center; justify-content:between; margin-top:16px; flex-wrap: wrap; gap: 10px;">
       <div class="ml-badge" id="mlBadge" style="color:var(--accent)">🤖 Model Configured</div>
-      <button onclick="copyResult()" id="copyBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);color:var(--accent);padding:7px 16px;border-radius:8px;cursor:pointer;">📋 Copy Result</button>
+      <button onclick="copyResult()" id="copyBtn" style="background:var(--accent-soft); border:1px solid var(--glass-border); color:var(--accent); padding:7px 16px; border-radius:8px; cursor:pointer;">📋 Copy Result</button>
     </div>
   </div>
 
+  <!-- Real Time Prediction History Log -->
   <div class="glass chart-card" style="margin-bottom:24px; padding:20px;">
-    <div style="display:flex;justify-content:between;align-items:center;margin-bottom:16px;">
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:16px; flex-wrap: wrap; gap: 10px;">
       <div class="section-label">⭐ Real Time Prediction History</div>
       <div>
-        <button onclick="loadHistory()" style="background:var(--accent-soft);border:1px solid var(--glass-border);color:var(--accent);padding:6px 14px;border-radius:8px;cursor:pointer;">🔄 Refresh</button>
-        <button onclick="clearHistory()" style="background:var(--fake-bg);border:1px solid var(--fake-border);color:var(--fake-color);padding:6px 14px;border-radius:8px;cursor:pointer;">🗑️ Clear</button>
+        <button onclick="loadHistory()" style="background:var(--accent-soft); border:1px solid var(--glass-border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer;">🔄 Refresh</button>
+        <button onclick="clearHistory()" style="background:var(--fake-bg); border:1px solid var(--fake-border); color:var(--fake-color); padding:6px 14px; border-radius:8px; cursor:pointer;">🗑️ Clear All</button>
       </div>
     </div>
     <div style="overflow-x:auto">
-      <table class="history-table" style="width:100%;border-collapse:collapse;text-align:left;">
+      <table class="history-table" style="width:100%; border-collapse:collapse; text-align:left;">
         <thead>
           <tr style="border-bottom:1px solid var(--glass-border);">
             <th style="padding:10px;">Preview</th>
