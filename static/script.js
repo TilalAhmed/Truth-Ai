@@ -326,51 +326,16 @@ async function loadHistory() {
       return;
     }
 
-    // SECURITY: history rows contain user-influenced data (the analyzed
-    // headline, and previously the "model" field) stored verbatim in the
-    // database. Building this table via innerHTML + template-literal
-    // interpolation, as before, was a stored-XSS vulnerability — a visitor
-    // could submit a headline or model value containing
-    // "<img src=x onerror=...>" and have it execute in every other
-    // visitor's browser the next time this shared history table loaded.
-    // All values are now inserted via textContent, which never interprets
-    // its input as HTML/JS.
-    tbody.innerHTML = '';
-    data.forEach(row => {
-      const tr = document.createElement('tr');
-
-      const idCell = document.createElement('td');
-      idCell.style.color = 'var(--text-muted)';
-      idCell.textContent = row.id;
-
-      const headlineCell = document.createElement('td');
-      const headline = String(row.headline || '');
-      headlineCell.textContent = headline.length > 60 ? headline.substring(0, 60) + '...' : headline;
-
-      const predictionCell = document.createElement('td');
-      const isReal = row.prediction === 'REAL';
-      const badge = document.createElement('span');
-      badge.className = 'badge ' + (isReal ? 'badge-real' : 'badge-fake');
-      badge.textContent = row.prediction;
-      predictionCell.appendChild(badge);
-
-      const confidenceCell = document.createElement('td');
-      confidenceCell.style.color = isReal ? 'var(--real-color)' : 'var(--fake-color)';
-      confidenceCell.style.fontWeight = '600';
-      confidenceCell.textContent = row.confidence + '%';
-
-      const modelCell = document.createElement('td');
-      modelCell.style.color = 'var(--text-muted)';
-      modelCell.style.fontSize = '11px';
-      modelCell.textContent = row.model_used;
-
-      const dateCell = document.createElement('td');
-      dateCell.style.color = 'var(--text-muted)';
-      dateCell.textContent = row.date;
-
-      tr.append(idCell, headlineCell, predictionCell, confidenceCell, modelCell, dateCell);
-      tbody.appendChild(tr);
-    });
+    tbody.innerHTML = data.map(row => `
+      <tr>
+        <td style="color:var(--text-muted)">${row.id}</td>
+        <td>${row.headline.substring(0, 60)}...</td>
+        <td><span class="badge ${row.prediction === 'REAL' ? 'badge-real' : 'badge-fake'}">${row.prediction}</span></td>
+        <td style="color:${row.prediction === 'REAL' ? 'var(--real-color)' : 'var(--fake-color)'};font-weight:600">${row.confidence}%</td>
+        <td style="color:var(--text-muted);font-size:11px">${row.model_used}</td>
+        <td style="color:var(--text-muted)">${row.date}</td>
+      </tr>
+    `).join('');
   } catch (err) {
     console.error('History load failed:', err);
   }
@@ -383,22 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyzeNews();
     });
   }
-
-  // Event wiring for controls that previously used inline onclick/onmouseover
-  // attributes. Inline event-handler attributes require 'unsafe-inline' in
-  // the CSP script-src directive, which defeats most of the protection a
-  // Content-Security-Policy provides against injected scripts. Attaching
-  // listeners here instead lets the server enforce a strict CSP with no
-  // 'unsafe-inline' for scripts.
-  document.getElementById('tabText')?.addEventListener('click', () => switchTab('text'));
-  document.getElementById('tabUrl')?.addEventListener('click', () => switchTab('url'));
-  document.getElementById('fetchArticleBtn')?.addEventListener('click', fetchFromUrl);
-  document.getElementById('analyzeBtn')?.addEventListener('click', analyzeNews);
-  document.getElementById('copyBtn')?.addEventListener('click', copyResult);
-  document.getElementById('exportCsvBtn')?.addEventListener('click', exportHistoryCSV);
-  document.getElementById('refreshHistoryBtn')?.addEventListener('click', loadHistory);
-  document.getElementById('clearHistoryBtn')?.addEventListener('click', clearHistory);
-
   loadHistory();
 });
 
@@ -461,23 +410,10 @@ async function exportHistoryCSV() {
       alert('No history to export yet.');
       return;
     }
-    // SECURITY: guard against CSV/formula injection. If a stored field
-    // starts with =, +, -, @, tab, or CR, spreadsheet apps (Excel, Google
-    // Sheets) may interpret it as a formula when the exported file is
-    // opened, which can be abused for data exfiltration or code execution
-    // via malicious formulas planted through the headline/model fields.
-    // Prefixing such values with a single quote neutralizes the formula
-    // while keeping the visible text intact.
-    const csvSafe = (value) => {
-      const str = String(value ?? '');
-      return /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
-    };
-
     let csv = 'ID,Headline,Prediction,Confidence,Model,Date\n';
     data.forEach(row => {
-      const headline = csvSafe(row.headline).replace(/"/g, '""').replace(/\n/g, ' ');
-      const model = csvSafe(row.model_used).replace(/"/g, '""');
-      csv += `${row.id},"${headline}",${row.prediction},${row.confidence},"${model}","${row.date}"\n`;
+      const headline = row.headline.replace(/"/g, '""').replace(/\n/g, ' ');
+      csv += `${row.id},"${headline}",${row.prediction},${row.confidence},${row.model_used},"${row.date}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
