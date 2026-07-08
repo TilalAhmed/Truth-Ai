@@ -1,4 +1,4 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg-deep: #020b18;
       --glass-bg: rgba(6, 30, 65, 0.55);
@@ -186,8 +186,6 @@
 
     footer { text-align: center; margin-top: 60px; font-size: 12px; color: var(--text-muted); }
     footer span { color: var(--accent); }
-    .footer-link { color: var(--text-muted); text-decoration: none; font-size: 12px; transition: color 0.2s; }
-    .footer-link:hover { color: var(--accent); }
 
     @media (max-width: 768px) {
       .stats-row { grid-template-columns: repeat(3, 1fr); }
