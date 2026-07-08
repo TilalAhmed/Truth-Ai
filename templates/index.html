@@ -38,8 +38,8 @@
     <div class="section-label">📰 Live News Analyzer</div>
 
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button id="tabText" style="background:var(--accent);border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">📝 Paste Text</button>
-      <button id="tabUrl" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">🔗 Paste URL</button>
+      <button id="tabText" onclick="switchTab('text')" style="background:var(--accent);border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">📝 Paste Text</button>
+      <button id="tabUrl" onclick="switchTab('url')" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s">🔗 Paste URL</button>
     </div>
 
     <div id="textInputDiv">
@@ -49,7 +49,7 @@
     <div id="urlInputDiv" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <input type="url" id="urlInput" placeholder="https://www.dawn.com/news/article..." style="flex:1;min-width:200px;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:14px;color:var(--text-primary);outline:none;" aria-label="News article URL input"/>
-        <button id="fetchArticleBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:10px;padding:14px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap">📥 Fetch Article</button>
+        <button onclick="fetchFromUrl()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:10px;padding:14px 18px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap">📥 Fetch Article</button>
       </div>
       <div style="margin-top:10px">
         <textarea id="fetchedText" placeholder="Fetched article will appear here automatically..." rows="5" style="width:100%;background:rgba(2,11,24,0.6);border:1px solid var(--glass-border);border-radius:12px;padding:16px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text-secondary);outline:none;resize:vertical" aria-label="Fetched article content"></textarea>
@@ -62,7 +62,7 @@
         <option value="{{ model }}">{{ model }}</option>
         {% endfor %}
       </select>
-      <button class="btn-analyze" id="analyzeBtn" aria-label="Analyze the news article">
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyzeNews()" aria-label="Analyze the news article">
         <span id="btnText">🔍 Analyze News</span>
         <div class="spinner" id="btnSpinner"></div>
       </button>
@@ -156,7 +156,7 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px">
       <div class="ml-badge" id="mlBadge" style="margin-top:0">🤖 Model: —</div>
-      <button id="copyBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:7px 16px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">📋 Copy Result</button>
+      <button onclick="copyResult()" id="copyBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:7px 16px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">📋 Copy Result</button>
     </div>
   </div>
 
@@ -238,9 +238,9 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div class="section-label" style="margin-bottom:0">⭐ Real Time Prediction History</div>
       <div style="display:flex;gap:8px">
-        <button id="exportCsvBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">⬇️ Export CSV</button>
-        <button id="refreshHistoryBtn" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🔄 Refresh</button>
-        <button id="clearHistoryBtn" style="background:var(--fake-bg);border:1px solid var(--fake-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--fake-color);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🗑️ Clear</button>
+        <button onclick="exportHistoryCSV()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">⬇️ Export CSV</button>
+        <button onclick="loadHistory()" style="background:var(--accent-soft);border:1px solid var(--glass-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🔄 Refresh</button>
+        <button onclick="clearHistory()" style="background:var(--fake-bg);border:1px solid var(--fake-border);border-radius:8px;padding:6px 14px;font-size:11px;color:var(--fake-color);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">🗑️ Clear</button>
       </div>
     </div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
@@ -287,10 +287,10 @@
     <div style="margin-bottom:10px">Built with <span>Flask + Groq LLaMA 3.3</span> · TruthScan AI</div>
     <div style="margin-bottom:12px;color:var(--text-secondary)">Designed & Developed by <span style="color:var(--accent);font-weight:600">Tilal Ahmed</span></div>
     <div style="display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap">
-      <a href="https://portfolio-eta-three-v6jh1t3uhf.vercel.app/" target="_blank" rel="noopener noreferrer" class="footer-link">🌐 Portfolio</a>
-      <a href="https://github.com/TilalAhmed" target="_blank" rel="noopener noreferrer" class="footer-link">💻 GitHub</a>
-      <a href="https://www.linkedin.com/in/tilal-ahmed-96778b311/" target="_blank" rel="noopener noreferrer" class="footer-link">🔗 LinkedIn</a>
-      <a href="mailto:tilalahmed956@gmail.com" class="footer-link">✉️ Email</a>
+      <a href="https://portfolio-eta-three-v6jh1t3uhf.vercel.app/" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">🌐 Portfolio</a>
+      <a href="https://github.com/TilalAhmed" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">💻 GitHub</a>
+      <a href="https://www.linkedin.com/in/tilal-ahmed-96778b311/" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">🔗 LinkedIn</a>
+      <a href="mailto:tilalahmed956@gmail.com" style="color:var(--text-muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">✉️ Email</a>
     </div>
   </footer>
 
